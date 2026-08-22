@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Monitor de Preços — Concorrente</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --surface-page:   #f9f9f7;
+    --page-gradient:  linear-gradient(160deg, #f4f2ff 0%, #f9f9f7 45%, #fdfbf7 100%);
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6;
+    --series-1-wash:  rgba(42,120,214,0.10);
+    --good-text:      #006300;
+    --slot-orange:    #eb6834;
+    --slot-aqua:      #1baf7a;
+    --slot-violet:    #4a3aa7;
+    --shadow:         0 1px 2px rgba(11,11,11,.04), 0 8px 24px rgba(11,11,11,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --surface-page:   #100c1e;
+      --page-gradient:  linear-gradient(160deg, #1c1436 0%, #130f24 55%, #0d0d0d 100%);
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #918fae;
+      --grid:           #2c2c2a;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-1-wash:  rgba(57,135,229,0.14);
+      --good-text:      #0ca30c;
+      --slot-orange:    #d95926;
+      --slot-aqua:      #199e70;
+      --slot-violet:    #9085e9;
+      --shadow:         0 1px 2px rgba(0,0,0,.3), 0 12px 28px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --surface-page:   #100c1e;
+    --page-gradient:  linear-gradient(160deg, #1c1436 0%, #130f24 55%, #0d0d0d 100%);
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #918fae;
+    --grid:           #2c2c2a;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-1-wash:  rgba(57,135,229,0.14);
+    --good-text:      #0ca30c;
+    --slot-orange:    #d95926;
+    --slot-aqua:      #199e70;
+    --slot-violet:    #9085e9;
+    --shadow:         0 1px 2px rgba(0,0,0,.3), 0 12px 28px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface-page); }
+  .viz-root {
+    background: var(--page-gradient);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 60px; }
+
+  .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 4px; flex-wrap: wrap; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { font-size: 21px; font-weight: 600; margin: 0; }
+  p.hint { font-size: 12.5px; color: var(--text-muted); margin: 10px 0 22px; }
+
+  .theme-toggle {
+    display: flex; align-items: center; gap: 7px; flex-shrink: 0;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 999px;
+    padding: 8px 12px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; font-family: inherit;
+  }
+  .theme-toggle:hover { color: var(--text-primary); border-color: var(--series-1); }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .kpi-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .kpi-card .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .kpi-card .value { font-size: 22px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 22px 16px; box-shadow: var(--shadow);
+  }
+  .card h2 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+  .card .card-sub { font-size: 12.5px; color: var(--text-muted); margin: 0 0 14px; }
+
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.data-table th {
+    text-align: left; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .02em;
+    color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--grid);
+  }
+  table.data-table th.num, table.data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table td { padding: 9px 10px; border-bottom: 1px solid var(--grid); color: var(--text-secondary); }
+  table.data-table tr:last-child td { border-bottom: none; }
+  table.data-table td.name { color: var(--text-primary); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600;
+  }
+  .badge.subiu  { background: rgba(235,104,52,0.12); color: var(--slot-orange); }
+  .badge.caiu   { background: rgba(27,175,122,0.12); color: var(--slot-aqua); }
+  .badge.novo   { background: var(--series-1-wash); color: var(--series-1); }
+
+  .empty { padding: 30px 10px; text-align: center; color: var(--text-muted); font-size: 13.5px; }
+
+  footer.note {
+    margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);
+    font-size: 12.5px; color: var(--text-muted); line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <p class="eyebrow">Monitor de Preços de Concorrente</p>
+        <h1>Relatório de mudanças</h1>
+      </div>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Alternar tema claro/escuro">
+        <span class="icon">☾</span><span class="txt">Modo escuro</span>
+      </button>
+    </div>
+    <p class="hint" id="subtitle"></p>
+
+    <div class="kpi-row" id="kpi-row"></div>
+
+    <div class="card">
+      <h2>Produtos com mudança de preço</h2>
+      <p class="card-sub">Comparado com a checagem anterior salva no histórico.</p>
+      <div id="table-wrap"></div>
+    </div>
+
+    <footer class="note">
+      Gerado automaticamente por <strong>monitor.py</strong> a cada execução —
+      não é editado manualmente.
+    </footer>
+  </div>
+</div>
+
+<script>
+(function () {
+  const root = document.documentElement;
+  const btn = document.getElementById("theme-toggle");
+  const icon = btn.querySelector(".icon");
+  const txt = btn.querySelector(".txt");
+  function applyTheme(theme) {
+    root.setAttribute("data-theme", theme);
+    icon.textContent = theme === "dark" ? "☀" : "☾";
+    txt.textContent = theme === "dark" ? "Modo claro" : "Modo escuro";
+  }
+  let stored = null;
+  try { stored = localStorage.getItem("price-monitor-theme"); } catch (e) {}
+  applyTheme(stored || "light");
+  btn.addEventListener("click", () => {
+    const current = root.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    const next = current === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("price-monitor-theme", next); } catch (e) {}
+  });
+})();
+
+(function () {
+  const DATA = {"gerado_em": "2026-08-21T19:11:12", "produtos_verificados": 60, "mudancas": [{"produto": "Soumission", "status": "subiu", "de": 45.09, "para": 50.1}, {"produto": "The Requiem Red", "status": "caiu", "de": 26.05, "para": 22.65}, {"produto": "The Boys in the Boat: Nine Americans and Their Epic Quest for Gold at the 1936 Berlin Olympics", "status": "caiu", "de": 25.99, "para": 22.6}, {"produto": "Starving Hearts (Triangular Trade Trilogy, #1)", "status": "caiu", "de": 16.09, "para": 13.99}, {"produto": "Rip it Up and Start Again", "status": "subiu", "de": 31.52, "para": 35.02}, {"produto": "Our Band Could Be Your Life: Scenes from the American Indie Underground, 1981-1991", "status": "subiu", "de": 51.52, "para": 57.25}, {"produto": "It's Only the Himalayas", "status": "caiu", "de": 51.95, "para": 45.17}, {"produto": "In Her Wake", "status": "subiu", "de": 11.56, "para": 12.84}, {"produto": "Foolproof Preserving: A Guide to Small Batch Jams, Jellies, Pickles, Condiments, and More: A Foolproof Guide to Making Small Batch Jams, Jellies, Pickles, Condiments, and More", "status": "caiu", "de": 35.1, "para": 30.52}, {"produto": "Birdsong: A Story in Pictures", "status": "caiu", "de": 62.84, "para": 54.64}, {"produto": "Aladdin and His Wonderful Lamp", "status": "caiu", "de": 61.1, "para": 53.13}, {"produto": "Worlds Elsewhere: Journeys Around Shakespeare’s Globe", "status": "caiu", "de": 46.34, "para": 40.3}, {"produto": "Wall and Piece", "status": "subiu", "de": 39.76, "para": 44.18}, {"produto": "The Bear and the Piano", "status": "caiu", "de": 42.42, "para": 36.89}, {"produto": "Maude (1883-1993):She Grew Up with the country", "status": "subiu", "de": 16.22, "para": 18.02}, {"produto": "Behind Closed Doors", "status": "caiu", "de": 60.05, "para": 52.22}, {"produto": "Slow States of Collapse: Poems", "status": "caiu", "de": 65.91, "para": 57.31}, {"produto": "Private Paris (Private #10)", "status": "caiu", "de": 54.75, "para": 47.61}, {"produto": "When We Collided", "status": "caiu", "de": 36.54, "para": 31.77}, {"produto": "We Love You, Charlie Freeman", "status": "caiu", "de": 57.81, "para": 50.27}, {"produto": "Unbound: How Eight Technologies Made Us Human, Transformed Society, and Brought Our World to the Brink", "status": "caiu", "de": 29.35, "para": 25.52}, {"produto": "Throwing Rocks at the Google Bus: How Growth Became the Enemy of Prosperity", "status": "caiu", "de": 35.79, "para": 31.12}, {"produto": "Thirst", "status": "caiu", "de": 19.86, "para": 17.27}, {"produto": "The Secret of Dreadwillow Carse", "status": "subiu", "de": 50.52, "para": 56.13}, {"produto": "The Pioneer Woman Cooks: Dinnertime: Comfort Classics, Freezer Food, 16-Minute Meals, and Other Delicious Ways to Solve Supper!", "status": "caiu", "de": 64.87, "para": 56.41}, {"produto": "The Past Never Ends", "status": "subiu", "de": 50.85, "para": 56.5}], "resumo": {"novos": 0, "subiu": 8, "caiu": 18}};
+
+  function preco(v) {
+    return v == null ? "—" : "£" + Number(v).toFixed(2);
+  }
+
+  document.getElementById("subtitle").textContent =
+    `${DATA.produtos_verificados} produtos verificados em ${DATA.gerado_em}`;
+
+  const kpis = [
+    { label: "Produtos verificados", value: DATA.produtos_verificados },
+    { label: "Mudanças detectadas", value: DATA.mudancas.length },
+    { label: "Preços que subiram", value: DATA.resumo.subiu },
+    { label: "Preços que caíram", value: DATA.resumo.caiu },
+    { label: "Produtos novos", value: DATA.resumo.novos },
+  ];
+  document.getElementById("kpi-row").innerHTML = kpis.map(k => `
+    <div class="kpi-card">
+      <div class="label">${k.label}</div>
+      <div class="value">${k.value}</div>
+    </div>
+  `).join("");
+
+  const tableWrap = document.getElementById("table-wrap");
+  if (!DATA.mudancas.length) {
+    tableWrap.innerHTML = `<div class="empty">Nenhuma mudança desde a última execução.</div>`;
+  } else {
+    const rows = DATA.mudancas.map(m => `
+      <tr>
+        <td class="name">${m.produto}</td>
+        <td><span class="badge ${m.status}">${m.status}</span></td>
+        <td class="num">${preco(m.de)}</td>
+        <td class="num">${preco(m.para)}</td>
+      </tr>
+    `).join("");
+    tableWrap.innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Produto</th><th>Status</th><th class="num">De</th><th class="num">Para</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+})();
+</script>
+</body>
+</html>

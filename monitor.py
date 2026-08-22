@@ -8,6 +8,7 @@ vez por dia, comparando sempre contra a execução anterior.
 
 Uso: python monitor.py
 """
+import json
 import sqlite3
 from datetime import datetime
 
@@ -17,6 +18,8 @@ from scraper import scrape_catalog
 
 DB = "price_history.db"
 RELATORIO = "alertas_preco.xlsx"
+TEMPLATE_HTML = "report_template.html"
+RELATORIO_HTML = "report.html"
 
 
 def init_db(conn):
@@ -67,6 +70,23 @@ def main():
         print("Nenhuma mudança desde a última execução.")
 
     print(f"{len(items)} produtos verificados em {agora}")
+
+    report_data = {
+        "gerado_em": agora,
+        "produtos_verificados": len(items),
+        "mudancas": mudancas,
+        "resumo": {
+            "novos": sum(1 for m in mudancas if m["status"] == "novo"),
+            "subiu": sum(1 for m in mudancas if m["status"] == "subiu"),
+            "caiu": sum(1 for m in mudancas if m["status"] == "caiu"),
+        },
+    }
+    with open(TEMPLATE_HTML, encoding="utf-8") as f:
+        template = f.read()
+    html = template.replace("__REPORT_DATA__", json.dumps(report_data, ensure_ascii=False))
+    with open(RELATORIO_HTML, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"-> {RELATORIO_HTML}")
 
 
 if __name__ == "__main__":
